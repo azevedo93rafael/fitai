@@ -299,6 +299,10 @@
     <div class="onboard-body">
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:20px;">
         <div style="font-size:12px; color:var(--text2); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.06em; font-weight:500;">Seu perfil</div>
+        <div style="margin-bottom:10px;">
+          <label class="form-label">Seu nome</label>
+          <input class="input-field" id="ob-nome" type="text" placeholder="Como quer ser chamado?" value="Raphael">
+        </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
           <div>
             <label class="form-label">Peso (kg)</label>
@@ -403,10 +407,10 @@
         </div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Calorias/dia</div>
+        <div class="stat-card" style="cursor:pointer;" onclick="showScreen('mais')" title="Toque para ver o detalhamento">
+          <div class="stat-label">Meta kcal/dia</div>
           <div class="stat-val" id="home-kcal">—</div>
-          <div class="stat-sub">déficit calórico</div>
+          <div class="stat-sub" id="home-kcal-sub">déficit de 400 kcal</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Treinos/semana</div>
@@ -930,6 +934,16 @@ function showLoading(msg = 'FitAI está pensando...') {
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
 
+// ═══════════════════════════════════════════
+// YOUTUBE LINKS
+// ═══════════════════════════════════════════
+function ytLink(name) {
+  return 'https://www.youtube.com/results?search_query=' + encodeURIComponent('como fazer ' + name + ' academia musculação');
+}
+function ytBtn(name) {
+  return `<a href="${ytLink(name)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#FF4444;opacity:0.8;text-decoration:none;margin-top:4px;padding:2px 8px;border:1px solid rgba(255,68,68,0.25);border-radius:8px;background:rgba(255,68,68,0.07);">▶ Ver execução</a>`;
+}
+
 function getDayName() {
   const days = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   return days[new Date().getDay()];
@@ -1122,6 +1136,9 @@ function getSelectedTags() {
 
 async function startApp() {
   const p = STATE.profile;
+  const isEdit = !!STATE.workoutPlan;
+
+  p.nome = (document.getElementById('ob-nome').value || '').trim() || p.nome || 'Raphael';
   p.peso = parseFloat(document.getElementById('ob-peso').value) || 113;
   p.altura = parseFloat(document.getElementById('ob-altura').value) || 185;
   p.nascimento = document.getElementById('ob-nasc').value || '1993-03-06';
@@ -1133,6 +1150,22 @@ async function startApp() {
 
   if (!STATE.weightLog.length || STATE.weightLog[STATE.weightLog.length-1].kg !== p.peso) {
     STATE.weightLog.push({ date: new Date().toISOString().split('T')[0], kg: p.peso });
+  }
+
+  if (isEdit) {
+    // Modo edição: atualiza dieta mas mantém programa de treinos atual
+    showLoading('Atualizando plano alimentar...');
+    try {
+      STATE.dietPlan = await generateDiet(p);
+    } catch(e) {
+      const t = calcTDEE(calcTMB(p.peso, p.altura, p.nascimento)) - 400;
+      STATE.dietPlan = generateFallbackDiet(t, Math.round(p.peso * 2.2), 180, 70);
+    }
+    saveState();
+    hideLoading();
+    showScreen('home');
+    showToast('✅ Perfil atualizado!');
+    return;
   }
 
   showLoading('Gerando seu programa de treinos...');
@@ -1156,6 +1189,28 @@ async function startApp() {
 // ═══════════════════════════════════════════
 // SCREENS (updated)
 // ═══════════════════════════════════════════
+function renderOnboarding() {
+  const p = STATE.profile;
+  const g = id => document.getElementById(id);
+  if (g('ob-nome'))    g('ob-nome').value    = p.nome        || '';
+  if (g('ob-peso'))    g('ob-peso').value    = p.peso        || 113;
+  if (g('ob-altura'))  g('ob-altura').value  = p.altura      || 185;
+  if (g('ob-nasc'))    g('ob-nasc').value    = p.nascimento  || '1993-03-06';
+  if (g('ob-dias'))    g('ob-dias').value    = p.dias        || 5;
+  if (g('ob-objetivo'))g('ob-objetivo').value= p.objetivo    || 'perda_peso_hipertrofia';
+  if (g('ob-divisao')) g('ob-divisao').value = p.divisao     || 'ABC_upper';
+  if (g('ob-nivel'))   g('ob-nivel').value   = p.nivel       || 'intermediario';
+  document.querySelectorAll('#muscle-tags .tag').forEach(tag => {
+    tag.classList.toggle('selected', (p.foco || []).includes(tag.dataset.val));
+  });
+  const btn = document.querySelector('#screen-onboarding .btn-primary');
+  if (btn && STATE.workoutPlan) {
+    btn.innerHTML = '<span>Salvar alterações</span><span>✓</span>';
+  } else if (btn) {
+    btn.innerHTML = '<span>Gerar meu programa com IA</span><span>→</span>';
+  }
+}
+
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -1163,6 +1218,7 @@ function showScreen(name) {
   const navBtn = document.getElementById('nav-' + name);
   if (navBtn) navBtn.classList.add('active');
 
+  if (name === 'onboarding') renderOnboarding();
   if (name === 'home') renderHome();
   if (name === 'treinos') renderTreinos();
   if (name === 'dieta') renderDieta();
@@ -1301,9 +1357,10 @@ function renderCargas() {
     <div class="exercise-log-item">
       <div class="ex-log-name">
         ${ex.name}
-        ${pr ? `<span class="pr-badge ml-2">🏆 PR: ${pr}kg</span>` : ''}
+        ${pr ? `<span class="pr-badge">🏆 PR: ${pr}kg</span>` : ''}
       </div>
-      <div style="font-size:11px; color:var(--text2); margin-bottom:8px;">${ex.sets} séries × ${ex.reps} · ${ex.rest}</div>
+      ${ytBtn(ex.name)}
+      <div style="font-size:11px; color:var(--text2); margin-bottom:8px; margin-top:4px;">${ex.sets} séries × ${ex.reps} · ${ex.rest}</div>
       ${Array.from({length: ex.sets}, (_, s) => `
         <div class="sets-row">
           <span class="set-label">Série ${s+1}</span>
@@ -1502,14 +1559,21 @@ function renderProfileSummary() {
   const p = STATE.profile;
   const tmb = calcTMB(p.peso, p.altura, p.nascimento);
   const tdee = calcTDEE(tmb);
+  const target = tdee - 400;
   const imc = (p.peso / ((p.altura/100)**2)).toFixed(1);
   document.getElementById('profile-summary').innerHTML = `
     <div>👤 <strong>${p.nome}</strong> · ${calcAge(p.nascimento)} anos</div>
     <div>⚖️ ${p.peso} kg · ${p.altura} cm · IMC ${imc}</div>
-    <div>🎯 Meta: ${calcMeta(p.peso)} kg (−${(p.peso - calcMeta(p.peso)).toFixed(0)} kg)</div>
-    <div>🔥 TDEE: ${tdee.toLocaleString()} kcal · Alvo: ${(tdee-400).toLocaleString()} kcal</div>
+    <div>🎯 Meta: ${calcMeta(p.peso)} kg (faltam ${(p.peso - calcMeta(p.peso)).toFixed(0)} kg)</div>
     <div>🏋️ ${p.dias}x/semana · ${p.divisao} · ${p.nivel}</div>
     <div>💪 Foco: ${p.foco.join(', ')}</div>
+    <div style="margin-top:14px; padding:12px; background:var(--surface2); border-radius:10px; border:1px solid var(--border);">
+      <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">🔢 Suas calorias — entenda os números</div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;"><span style="color:var(--text2);">🛌 Basal (TMB) — corpo em repouso</span><span style="font-weight:600;">${tmb.toLocaleString()} kcal</span></div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;"><span style="color:var(--text2);">⚡ Manutenção (TDEE) — com treinos</span><span style="font-weight:600;">${tdee.toLocaleString()} kcal</span></div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px;"><span style="color:var(--text2);">➖ Déficit aplicado</span><span style="color:var(--red);">−400 kcal</span></div>
+      <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:700; padding-top:8px; border-top:1px solid var(--border);"><span>🎯 Sua meta diária</span><span style="color:var(--accent);">${target.toLocaleString()} kcal</span></div>
+    </div>
   `;
 }
 
@@ -1673,12 +1737,15 @@ function renderHome() {
   const restante = (atual - meta).toFixed(1);
 
   document.getElementById('home-greeting').textContent = getGreeting();
+  document.getElementById('home-name').textContent = p.nome || 'Raphael';
   document.getElementById('home-sub').textContent = `${getDayName()} · ${STATE.workoutPlan ? getTodayWorkoutLabel() : 'Carregando...'}`;
   document.getElementById('home-peso').textContent = atual.toFixed(1) + ' kg';
   document.getElementById('home-peso-diff').textContent = perdido > 0 ? `↓ ${perdido} kg perdidos` : 'Início do programa';
   document.getElementById('home-meta').textContent = meta + ' kg';
   document.getElementById('home-meta-diff').textContent = `${restante} kg restantes`;
   document.getElementById('home-kcal').textContent = target.toLocaleString();
+  const kcalSubEl = document.getElementById('home-kcal-sub');
+  if (kcalSubEl) kcalSubEl.textContent = `TDEE ${tdee.toLocaleString()} − 400 kcal`;
   document.getElementById('home-total-lost').textContent = perdido > 0 ? `↓ ${perdido} kg` : '0 kg (início)';
 
   // Quick access
@@ -1731,6 +1798,7 @@ function renderHomeTodayWorkout() {
       <div class="workout-info">
         <div class="workout-name">${ex.name}</div>
         <div class="workout-detail">${ex.sets} séries × ${ex.reps} · descanso ${ex.rest}</div>
+        ${ytBtn(ex.name)}
       </div>
     </div>
   `).join('') + (d.exercises.length > 3 ? `<div style="font-size:11px; color:var(--text3); padding:8px 0 0;">+ ${d.exercises.length - 3} mais exercícios</div>` : '');
@@ -1803,6 +1871,7 @@ function selectDay(idx) {
           <div class="workout-name">${ex.name}</div>
           <div class="workout-detail">${ex.sets} × ${ex.reps} · ${ex.rest}</div>
           <div style="font-size:10px; color:var(--accent); margin-top:2px;">💡 ${ex.tip || ''}</div>
+          ${ytBtn(ex.name)}
         </div>
       </div>`).join('')}
   `;
