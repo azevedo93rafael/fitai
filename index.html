@@ -517,12 +517,14 @@
       <div class="card" id="diet-meals-card">
         <div style="font-size:13px; color:var(--text2);">Gerando seu plano alimentar...</div>
       </div>
+      <!--
       <div class="section-title">Perguntar à IA</div>
       <div class="card">
         <textarea class="input-field" id="diet-question" placeholder="Ex: Posso substituir o frango por atum? Qual lanche pré-treino é melhor?" style="margin-bottom:10px;"></textarea>
         <button class="btn btn-primary btn-sm" onclick="askDietQuestion()">Perguntar →</button>
         <div id="diet-answer" style="margin-top:12px; font-size:13px; line-height:1.6; color:var(--text2); display:none;"></div>
       </div>
+      -->
     </div>
   </div>
 
@@ -603,6 +605,7 @@
   <!-- ══════════════════════════════════════ -->
   <!-- CHAT                                   -->
   <!-- ══════════════════════════════════════ -->
+  <!--
   <div id="screen-chat" class="screen" style="padding-bottom:0;">
     <div class="header" style="padding-bottom:12px;">
       <div class="header-top">
@@ -636,6 +639,7 @@
       <button class="chat-send" onclick="sendChat()">➤</button>
     </div>
   </div>
+  -->
 
   <!-- ══════════════════════════════════════ -->
   <!-- CARGAS                                 -->
@@ -682,7 +686,7 @@
     </div>
     <div class="scroll-area">
 
-      <!-- RELATÓRIO SEMANAL -->
+      <!--
       <div class="section-title" style="margin-top:0;">Relatório semanal com IA</div>
       <div class="card" id="report-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
@@ -692,7 +696,6 @@
           </div>
           <button class="btn btn-outline btn-sm" style="width:auto;" onclick="generateWeeklyReport()">⚡ Gerar análise</button>
         </div>
-        <!-- Quick stats -->
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;">
           <div style="text-align:center; background:var(--surface2); border-radius:10px; padding:10px 6px;">
             <div class="streak-num" style="font-size:28px;" id="rep-treinos">0</div>
@@ -711,6 +714,7 @@
           Clique em "Gerar análise" para receber um relatório completo da semana com feedback personalizado da IA.
         </div>
       </div>
+      -->
 
       <!-- STREAK -->
       <div class="section-title">Sequência de treinos 🔥</div>
@@ -760,7 +764,7 @@
             <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">🌅</span> <div><div style="font-weight:500;">Lembrete matinal</div><div style="font-size:11px; color:var(--text3);">Treino do dia ao acordar</div></div></div>
             <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">✅</span> <div><div style="font-weight:500;">Check-in via WhatsApp</div><div style="font-size:11px; color:var(--text3);">Responda "sim" ou "não" para registrar</div></div></div>
             <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">⚖️</span> <div><div style="font-weight:500;">Lembrete de peso semanal</div><div style="font-size:11px; color:var(--text3);">Todo domingo de manhã</div></div></div>
-            <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">📊</span> <div><div style="font-weight:500;">Relatório semanal</div><div style="font-size:11px; color:var(--text3);">Resumo e motivação toda segunda</div></div></div>
+            <!-- <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">📊</span> <div><div style="font-weight:500;">Relatório semanal</div><div style="font-size:11px; color:var(--text3);">Resumo e motivação toda segunda</div></div></div> -->
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
             <button class="btn btn-outline btn-sm" onclick="testWAMessage()">📨 Testar mensagem</button>
@@ -794,10 +798,12 @@
       <span class="nav-icon">🏋️</span>
       <span class="nav-label">Treinos</span>
     </button>
+    <!--
     <button class="nav-btn" id="nav-chat" onclick="showScreen('chat')">
       <span class="nav-icon">🤖</span>
       <span class="nav-label">FitAI</span>
     </button>
+    -->
     <button class="nav-btn" id="nav-cargas" onclick="showScreen('cargas')">
       <span class="nav-icon">📋</span>
       <span class="nav-label">Cargas</span>
@@ -976,45 +982,8 @@ async function callClaude(systemPrompt, userMessage) {
 // ═══════════════════════════════════════════
 // GENERATE WORKOUT
 // ═══════════════════════════════════════════
-async function generateWorkout(profile) {
-  const tmb = calcTMB(profile.peso, profile.altura, profile.nascimento);
-  const tdee = calcTDEE(tmb);
-  const deficit = Math.round(tdee - 400);
-  const sys = `Você é um personal trainer expert. Responda APENAS em JSON válido, sem texto extra, sem markdown.`;
-  const msg = `Crie um programa de treino completo para este atleta:
-- Peso: ${profile.peso}kg | Altura: ${profile.altura}cm | Idade: ${calcAge(profile.nascimento)} anos
-- Objetivo: perda de peso + hipertrofia e definição
-- Foco muscular: ${profile.foco.join(', ')}
-- Divisão: ${profile.divisao} — 5 dias/semana (Seg a Sex)
-- Nível: ${profile.nivel}
-- Tempo disponível: 60 min/treino
-
-Retorne JSON com esta estrutura exata:
-{
-  "program_name": "nome do programa",
-  "objective": "descrição curta do objetivo",
-  "days": [
-    {
-      "day": "Segunda",
-      "label": "Peito + Tríceps",
-      "type": "treino",
-      "exercises": [
-        { "name": "nome do exercício", "sets": 4, "reps": "8-10", "rest": "60s", "tip": "dica técnica curta" }
-      ]
-    },
-    { "day": "Sábado", "label": "Descanso", "type": "rest" },
-    { "day": "Domingo", "label": "Descanso", "type": "rest" }
-  ]
-}
-Inclua todos os 7 dias. Dias de treino: Seg a Sex. Sáb e Dom: descanso. Inclua cardio HIIT em 1 dia como finalizador.`;
-
-  const raw = await callClaude(sys, msg);
-  try {
-    const clean = raw.replace(/```json|```/g,'').trim();
-    return JSON.parse(clean);
-  } catch(e) {
-    return generateFallbackWorkout(profile);
-  }
+function generateWorkout(profile) {
+  return generateFallbackWorkout(profile);
 }
 
 function generateFallbackWorkout(profile) {
@@ -1068,48 +1037,118 @@ function generateFallbackWorkout(profile) {
 // ═══════════════════════════════════════════
 // GENERATE DIET
 // ═══════════════════════════════════════════
-async function generateDiet(profile) {
+function generateDiet(profile) {
   const tmb = calcTMB(profile.peso, profile.altura, profile.nascimento);
-  const tdee = calcTDEE(tmb);
-  const target = tdee - 400;
+  const target = Math.round(tmb - 400); // 400 kcal abaixo da basal (TMB)
   const prot = Math.round(profile.peso * 2.2);
   const fat = Math.round(target * 0.25 / 9);
   const carb = Math.round((target - prot * 4 - fat * 9) / 4);
 
-  const sys = `Você é um nutricionista expert. Responda APENAS em JSON válido, sem texto extra, sem markdown.`;
-  const msg = `Crie um plano alimentar detalhado para:
-- Peso: ${profile.peso}kg | Altura: ${profile.altura}cm | Idade: ${calcAge(profile.nascimento)} anos
-- Objetivo: perda de peso + hipertrofia
-- TDEE: ~${tdee} kcal/dia | Meta: ${target} kcal (déficit de ~400)
-- Proteínas: ${prot}g | Gorduras: ${fat}g | Carboidratos: ${carb}g
-- Treina 5x/semana, 1 hora por sessão
-- Contexto: Brasil, alimentos acessíveis
+  // Distribute macros across 4 meals (Pré-Treino, Pós-Treino, Almoço, Jantar)
+  const m1Kcal = Math.round(target * 0.15);
+  const m1Prot = Math.round(prot * 0.15);
+  const m1Carb = Math.round(carb * 0.20);
+  const m1Fat = Math.round(fat * 0.10);
 
-Retorne JSON com esta estrutura:
-{
-  "kcal": ${target},
-  "proteina": ${prot},
-  "carbs": ${carb},
-  "gordura": ${fat},
-  "meals": [
-    {
-      "name": "Café da manhã",
-      "time": "07:00",
-      "kcal": 450,
-      "proteina": 40,
-      "carbs": 35,
-      "items": ["Omelete 3 ovos + 1 clara", "2 fatias de pão integral", "Café preto s/ açúcar"]
-    }
-  ],
-  "tips": ["dica 1", "dica 2", "dica 3"]
-}
-Inclua 5-6 refeições. Priorize proteínas em todas as refeições.`;
+  const m2Kcal = Math.round(target * 0.20);
+  const m2Prot = Math.round(prot * 0.30);
+  const m2Carb = Math.round(carb * 0.20);
+  const m2Fat = Math.round(fat * 0.15);
 
-  const raw = await callClaude(sys, msg);
-  try {
-    const clean = raw.replace(/```json|```/g,'').trim();
-    return JSON.parse(clean);
-  } catch(e) { return generateFallbackDiet(target, prot, carb, fat); }
+  const m3Kcal = Math.round(target * 0.35);
+  const m3Prot = Math.round(prot * 0.28);
+  const m3Carb = Math.round(carb * 0.35);
+  const m3Fat = Math.round(fat * 0.38);
+
+  const m4Kcal = target - m1Kcal - m2Kcal - m3Kcal;
+  const m4Prot = prot - m1Prot - m2Prot - m3Prot;
+  const m4Carb = carb - m1Carb - m2Carb - m3Carb;
+  const m4Fat = fat - m1Fat - m2Fat - m3Fat;
+
+  // Compute quantities dynamically
+  const wheyG = Math.round((m1Prot / 24) * 30);
+  const bananaG = Math.round((m1Carb / 23) * 100);
+
+  const breadSlices = Math.max(1, Math.round(m2Carb / 12));
+  const remainingProtM2 = m2Prot - (breadSlices * 3);
+  const eggsCount = Math.max(1, Math.min(4, Math.round(m2Fat / 5)));
+  const eggWhitesCount = Math.max(0, Math.round((remainingProtM2 - (eggsCount * 6)) / 4));
+
+  const riceG = Math.round((m3Carb / 28) * 100);
+  const chickenG = Math.round((m3Prot / 23) * 100);
+  const oilM3Tsp = Math.max(1, Math.round(m3Fat / 4.5));
+
+  const potatoG = Math.round((m4Carb / 20) * 100);
+  const meatG = Math.round((m4Prot / 20) * 100);
+  const oilM4Tsp = Math.max(1, Math.round(m4Fat / 4.5));
+
+  return {
+    kcal: target,
+    proteina: prot,
+    carbs: carb,
+    gordura: fat,
+    meals: [
+      {
+        name: "Pré-Treino",
+        time: "06:00",
+        kcal: m1Kcal,
+        proteina: m1Prot,
+        carbs: m1Carb,
+        gordura: m1Fat,
+        items: [
+          `${wheyG}g de Whey Protein batido com água`,
+          `${bananaG}g de banana picada`,
+          `Consumir às 06:00 (30 minutos antes do treino de 06:30)`
+        ]
+      },
+      {
+        name: "Pós-Treino",
+        time: "08:00",
+        kcal: m2Kcal,
+        proteina: m2Prot,
+        carbs: m2Carb,
+        gordura: m2Fat,
+        items: [
+          `Omelete de ${eggsCount} ovos inteiros + ${eggWhitesCount} claras de ovo`,
+          `${breadSlices} fatias de pão integral`,
+          `Café preto ou chá sem açúcar`
+        ]
+      },
+      {
+        name: "Almoço",
+        time: "12:30",
+        kcal: m3Kcal,
+        proteina: m3Prot,
+        carbs: m3Carb,
+        gordura: m3Fat,
+        items: [
+          `${chickenG}g de peito de frango grelhado (pesado cru)`,
+          `${riceG}g de arroz integral cozido`,
+          `Salada de folhas verdes e tomate à vontade`,
+          `${oilM3Tsp} colheres de chá de azeite de oliva extra virgem`
+        ]
+      },
+      {
+        name: "Jantar",
+        time: "20:00",
+        kcal: m4Kcal,
+        proteina: m4Prot,
+        carbs: m4Carb,
+        gordura: m4Fat,
+        items: [
+          `${meatG}g de filé de tilápia grelhado ou patinho moído (pesado cru)`,
+          `${potatoG}g de batata-doce cozida`,
+          `Brócolis ou legumes refogados à vontade`,
+          `${oilM4Tsp} colheres de chá de azeite de oliva extra virgem`
+        ]
+      }
+    ],
+    tips: [
+      "Beba no mínimo de 3.5 a 4 litros de água ao longo do dia.",
+      "Prepare suas refeições com antecedência para evitar desvios.",
+      "Priorize de 7 a 8 horas de sono de qualidade para melhor recuperação."
+    ]
+  };
 }
 
 function generateFallbackDiet(kcal, prot, carb, fat) {
@@ -1154,34 +1193,16 @@ async function startApp() {
 
   if (isEdit) {
     // Modo edição: atualiza dieta mas mantém programa de treinos atual
-    showLoading('Atualizando plano alimentar...');
-    try {
-      STATE.dietPlan = await generateDiet(p);
-    } catch(e) {
-      const t = calcTDEE(calcTMB(p.peso, p.altura, p.nascimento)) - 400;
-      STATE.dietPlan = generateFallbackDiet(t, Math.round(p.peso * 2.2), 180, 70);
-    }
+    STATE.dietPlan = generateDiet(p);
     saveState();
-    hideLoading();
     showScreen('home');
     showToast('✅ Perfil atualizado!');
     return;
   }
 
-  showLoading('Gerando seu programa de treinos...');
-  try {
-    STATE.workoutPlan = await generateWorkout(p);
-    document.getElementById('loading-text').textContent = 'Calculando seu plano alimentar...';
-    STATE.dietPlan = await generateDiet(p);
-  } catch(e) {
-    STATE.workoutPlan = generateFallbackWorkout(p);
-    STATE.dietPlan = generateFallbackDiet(
-      calcTDEE(calcTMB(p.peso, p.altura, p.nascimento)) - 400,
-      Math.round(p.peso * 2.2), 180, 70
-    );
-  }
+  STATE.workoutPlan = generateWorkout(p);
+  STATE.dietPlan = generateDiet(p);
   saveState();
-  hideLoading();
   document.getElementById('main-navbar').style.display = 'flex';
   showScreen('home');
 }
@@ -1557,8 +1578,7 @@ function renderStreak() {
 function renderProfileSummary() {
   const p = STATE.profile;
   const tmb = calcTMB(p.peso, p.altura, p.nascimento);
-  const tdee = calcTDEE(tmb);
-  const target = tdee - 400;
+  const target = tmb - 400;
   const imc = (p.peso / ((p.altura/100)**2)).toFixed(1);
   document.getElementById('profile-summary').innerHTML = `
     <div>👤 <strong>${p.nome}</strong> · ${calcAge(p.nascimento)} anos</div>
@@ -1569,7 +1589,6 @@ function renderProfileSummary() {
     <div style="margin-top:14px; padding:12px; background:var(--surface2); border-radius:10px; border:1px solid var(--border);">
       <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">🔢 Suas calorias — entenda os números</div>
       <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;"><span style="color:var(--text2);">🛌 Basal (TMB) — corpo em repouso</span><span style="font-weight:600;">${tmb.toLocaleString()} kcal</span></div>
-      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;"><span style="color:var(--text2);">⚡ Manutenção (TDEE) — com treinos</span><span style="font-weight:600;">${tdee.toLocaleString()} kcal</span></div>
       <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px;"><span style="color:var(--text2);">➖ Déficit aplicado</span><span style="color:var(--red);">−400 kcal</span></div>
       <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:700; padding-top:8px; border-top:1px solid var(--border);"><span>🎯 Sua meta diária</span><span style="color:var(--accent);">${target.toLocaleString()} kcal</span></div>
     </div>
@@ -1726,8 +1745,7 @@ function simulateWACheckin(done) {
 function renderHome() {
   const p = STATE.profile;
   const tmb = calcTMB(p.peso, p.altura, p.nascimento);
-  const tdee = calcTDEE(tmb);
-  const target = tdee - 400;
+  const target = tmb - 400;
   const meta = calcMeta(p.peso);
   const log = STATE.weightLog;
   const atual = log.length ? log[log.length-1].kg : p.peso;
@@ -1744,7 +1762,7 @@ function renderHome() {
   document.getElementById('home-meta-diff').textContent = `${restante} kg restantes`;
   document.getElementById('home-kcal').textContent = target.toLocaleString();
   const kcalSubEl = document.getElementById('home-kcal-sub');
-  if (kcalSubEl) kcalSubEl.textContent = `TDEE ${tdee.toLocaleString()} − 400 kcal`;
+  if (kcalSubEl) kcalSubEl.textContent = `TMB ${tmb.toLocaleString()} − 400 kcal`;
   document.getElementById('home-total-lost').textContent = perdido > 0 ? `↓ ${perdido} kg` : '0 kg (início)';
 
   // Quick access
@@ -1910,10 +1928,10 @@ function checkInWorkout(done) {
   showToast(msg);
 }
 
-async function regenerateWorkout() {
-  showLoading('Regenerando programa de treinos...');
-  try { STATE.workoutPlan = await generateWorkout(STATE.profile); } catch(e) { STATE.workoutPlan = generateFallbackWorkout(STATE.profile); }
-  saveState(); hideLoading(); renderTreinos();
+function regenerateWorkout() {
+  STATE.workoutPlan = generateWorkout(STATE.profile);
+  saveState();
+  renderTreinos();
 }
 
 // ═══════════════════════════════════════════
@@ -1946,13 +1964,10 @@ function renderDieta() {
   `;
 }
 
-async function regenerateDiet() {
-  showLoading('Gerando novo plano alimentar...');
-  try { STATE.dietPlan = await generateDiet(STATE.profile); } catch(e) {
-    const t = calcTDEE(calcTMB(STATE.profile.peso, STATE.profile.altura, STATE.profile.nascimento)) - 400;
-    STATE.dietPlan = generateFallbackDiet(t, Math.round(STATE.profile.peso * 2.2), 180, 70);
-  }
-  saveState(); hideLoading(); renderDieta();
+function regenerateDiet() {
+  STATE.dietPlan = generateDiet(STATE.profile);
+  saveState();
+  renderDieta();
 }
 
 async function askDietQuestion() {
