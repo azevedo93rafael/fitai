@@ -845,6 +845,7 @@ const STATE = {
   dietPlan: null,
   checkins: {},
   currentDay: 0,
+  chatHistory: [],
 };
 
 // ═══════════════════════════════════════════
@@ -1293,10 +1294,30 @@ function showScreen(name) {
 // ═══════════════════════════════════════════
 // CHAT
 // ═══════════════════════════════════════════
-const CHAT_HISTORY = [];
-
 function renderChat() {
-  // already rendered dynamically
+  const container = document.getElementById('chat-messages');
+  container.innerHTML = ''; // Limpa mensagens anteriores
+
+  if (!STATE.chatHistory || STATE.chatHistory.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:20px 0;">
+        <div style="font-size:28px; margin-bottom:8px;">🤖</div>
+        <div style="font-size:13px; color:var(--text2); line-height:1.6;">Olá! Sou o FitAI, seu personal trainer e nutricionista virtual.<br>Pode me perguntar sobre treinos, dieta, progresso ou qualquer coisa sobre sua jornada fitness.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Desenhar histórico persistido
+  STATE.chatHistory.forEach(msg => {
+    let content = msg.content;
+    if (content.includes('<update_diet>')) {
+      content = content.substring(0, content.indexOf('<update_diet>')).trim();
+    }
+    appendChatMsg(msg.role, content, msg.time);
+  });
+  
+  container.scrollTop = container.scrollHeight;
 }
 
 async function sendChat() {
@@ -1305,9 +1326,19 @@ async function sendChat() {
   if (!text) return;
   input.value = '';
   input.style.height = 'auto';
-  appendChatMsg('user', text);
+  
+  const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  
+  // Salva no histórico local
+  if (!STATE.chatHistory) STATE.chatHistory = [];
+  STATE.chatHistory.push({ role: 'user', content: text, time: now });
+  if (STATE.chatHistory.length > 50) STATE.chatHistory.shift(); // Limita a 50 mensagens
+  saveState();
+  
+  // Renderiza imediatamente na UI
+  appendChatMsg('user', text, now);
 
-  // Build context
+  // Build context for the AI request
   const ctx = {
     profile: STATE.profile,
     currentWeight: STATE.weightLog.length ? STATE.weightLog[STATE.weightLog.length-1].kg : STATE.profile.peso,
@@ -1315,11 +1346,10 @@ async function sendChat() {
     workoutProgram: STATE.workoutPlan?.program_name,
     checkins: Object.keys(STATE.checkins).slice(-14).reduce((a,k) => { a[k]=STATE.checkins[k]; return a; }, {}),
     todayWorkout: getTodayWorkoutLabel(),
-    dietPlan: STATE.dietPlan, // Adicionado plano de dieta atual
+    dietPlan: STATE.dietPlan,
   };
 
   const typingId = appendTyping();
-  CHAT_HISTORY.push({ role: 'user', content: text });
 
   try {
     const sys = `Você é o FitAI, personal trainer e nutricionista virtual expert, com acesso completo ao perfil do usuário.
@@ -1360,7 +1390,15 @@ Para fazer a alteração, você deve incluir no FINAL da sua resposta uma tag es
 
 Certifique-se de que o JSON esteja no formato correto e represente a dieta completa atualizada. Explique na resposta de texto o que mudou e por quê.`;
 
-    const messages = CHAT_HISTORY.slice(-10); // últimas 10 mensagens para contexto
+    // Filtra o histórico para enviar ao OpenRouter apenas as últimas 10 mensagens
+    const messages = STATE.chatHistory.slice(-10).map(msg => {
+      let content = msg.content;
+      if (content.includes('<update_diet>')) {
+        content = content.substring(0, content.indexOf('<update_diet>')).trim();
+      }
+      return { role: msg.role, content: content };
+    });
+
     const resp = await fetch(`${SERVER_URL}/api/ai`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1387,7 +1425,6 @@ Certifique-se de que o JSON esteja no formato correto e represente a dieta compl
             saveState();
             renderDieta();
             
-            // Sincronizar com o servidor se o endpoint estiver disponível
             try {
               fetch(`${SERVER_URL}/api/program`, {
                 method: 'POST',
@@ -1403,7 +1440,6 @@ Certifique-se de que o JSON esteja no formato correto e represente a dieta compl
             showToast('🥗 Dieta atualizada com sucesso!');
           }
         }
-        // Limpar tag para que não apareça na janela de chat
         cleanReply = reply.substring(0, reply.indexOf('<update_diet>')).trim() + '\n' + reply.substring(endIdx + '</update_diet>'.length).trim();
         cleanReply = cleanReply.trim();
       } catch (err) {
@@ -1411,9 +1447,13 @@ Certifique-se de que o JSON esteja no formato correto e represente a dieta compl
       }
     }
     
-    CHAT_HISTORY.push({ role: 'assistant', content: cleanReply });
+    // Salva a resposta no histórico persistente
+    const aiTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    STATE.chatHistory.push({ role: 'assistant', content: cleanReply, time: aiTime });
+    saveState();
+    
     removeTyping(typingId);
-    appendChatMsg('ai', cleanReply);
+    appendChatMsg('ai', cleanReply, aiTime);
   } catch(e) {
     removeTyping(typingId);
     appendChatMsg('ai', '⚠️ Erro de conexão. Verifique sua internet e tente novamente.');
@@ -1425,15 +1465,15 @@ function sendQuick(text) {
   sendChat();
 }
 
-function appendChatMsg(role, text) {
+function appendChatMsg(role, text, time) {
   const container = document.getElementById('chat-messages');
-  const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const msgTime = time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const wrap = document.createElement('div');
   wrap.style.cssText = `display:flex; flex-direction:column; align-items:${role==='user'?'flex-end':'flex-start'};`;
   const formatted = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   wrap.innerHTML = `
     <div class="msg msg-${role==='user'?'user':'ai'}">${formatted}</div>
-    <div class="msg-time">${now}</div>
+    <div class="msg-time">${msgTime}</div>
   `;
   container.appendChild(wrap);
   container.scrollTop = container.scrollHeight;
