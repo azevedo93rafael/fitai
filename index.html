@@ -1310,6 +1310,7 @@ async function sendChat() {
     workoutProgram: STATE.workoutPlan?.program_name,
     checkins: Object.keys(STATE.checkins).slice(-14).reduce((a,k) => { a[k]=STATE.checkins[k]; return a; }, {}),
     todayWorkout: getTodayWorkoutLabel(),
+    dietPlan: STATE.dietPlan, // Adicionado plano de dieta atual
   };
 
   const typingId = appendTyping();
@@ -1317,9 +1318,42 @@ async function sendChat() {
 
   try {
     const sys = `Você é o FitAI, personal trainer e nutricionista virtual expert, com acesso completo ao perfil do usuário.
-Perfil atual: ${JSON.stringify(ctx)}
+Perfil atual e dieta: ${JSON.stringify(ctx)}
+
 Responda de forma direta, motivadora e prática. Máximo de 3-4 parágrafos. Use emojis com moderação. 
-Quando mencionar números de peso, use o contexto real do usuário. Fale em português brasileiro.`;
+Quando mencionar números de peso, use o contexto real do usuário. Fale em português brasileiro.
+
+AUTONOMIA DE AJUSTAR A DIETA:
+Se o usuário pedir para fazer alguma alteração, correção ou ajuste no plano de dieta atual (como substituir alimentos, alterar quantidades, mudar horários, etc.), você tem total autonomia para atualizar o plano de dieta.
+Para fazer a alteração, você deve incluir no FINAL da sua resposta uma tag especial contendo o JSON completo da dieta atualizada de forma estruturada:
+<update_diet>
+{
+  "kcal": 1800,
+  "proteina": 150,
+  "carbs": 160,
+  "gordura": 50,
+  "meals": [
+    {
+      "name": "Pré-Treino",
+      "time": "06:00",
+      "kcal": 270,
+      "proteina": 25,
+      "carbs": 30,
+      "gordura": 5,
+      "items": [
+        "30g de Whey Protein batido com água",
+        "100g de banana"
+      ]
+    },
+    ... (todas as 4 refeições exatamente no mesmo formato, mas com as alterações que o usuário pediu)
+  ],
+  "tips": [
+    "Dica útil baseada no ajuste feito..."
+  ]
+}
+</update_diet>
+
+Certifique-se de que o JSON esteja no formato correto e represente a dieta completa atualizada. Explique na resposta de texto o que mudou e por quê.`;
 
     const messages = CHAT_HISTORY.slice(-10); // últimas 10 mensagens para contexto
     const resp = await fetch(`${SERVER_URL}/api/ai`, {
@@ -1333,9 +1367,48 @@ Quando mencionar números de peso, use o contexto real do usuário. Fale em port
     });
     const data = await resp.json();
     const reply = data.text || 'Desculpe, não consegui responder agora.';
-    CHAT_HISTORY.push({ role: 'assistant', content: reply });
+    
+    // Processar atualização de dieta
+    let cleanReply = reply;
+    if (reply.includes('<update_diet>')) {
+      try {
+        const startIdx = reply.indexOf('<update_diet>') + '<update_diet>'.length;
+        const endIdx = reply.indexOf('</update_diet>');
+        if (endIdx > startIdx) {
+          const jsonStr = reply.substring(startIdx, endIdx).trim();
+          const newDiet = JSON.parse(jsonStr);
+          if (newDiet && newDiet.meals) {
+            STATE.dietPlan = newDiet;
+            saveState();
+            renderDieta();
+            
+            // Sincronizar com o servidor se o endpoint estiver disponível
+            try {
+              fetch(`${SERVER_URL}/api/program`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  workoutPlan: STATE.workoutPlan,
+                  dietPlan: STATE.dietPlan,
+                  profile: STATE.profile
+                })
+              });
+            } catch(e) {}
+            
+            showToast('🥗 Dieta atualizada com sucesso!');
+          }
+        }
+        // Limpar tag para que não apareça na janela de chat
+        cleanReply = reply.substring(0, reply.indexOf('<update_diet>')).trim() + '\n' + reply.substring(endIdx + '</update_diet>'.length).trim();
+        cleanReply = cleanReply.trim();
+      } catch (err) {
+        console.error('Erro ao processar atualização da dieta:', err);
+      }
+    }
+    
+    CHAT_HISTORY.push({ role: 'assistant', content: cleanReply });
     removeTyping(typingId);
-    appendChatMsg('ai', reply);
+    appendChatMsg('ai', cleanReply);
   } catch(e) {
     removeTyping(typingId);
     appendChatMsg('ai', '⚠️ Erro de conexão. Verifique sua internet e tente novamente.');
