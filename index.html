@@ -959,18 +959,18 @@ function getGreeting() {
 // API CALL
 // ═══════════════════════════════════════════
 async function callClaude(systemPrompt, userMessage) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  const resp = await fetch(`${SERVER_URL}/api/ai`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }]
+      messages: [{ role: 'user', content: userMessage }],
+      max_tokens: 1000
     })
   });
   const data = await resp.json();
-  return data.content?.[0]?.text || '';
+  if (data.error) throw new Error(data.error);
+  return data.text || '';
 }
 
 // ═══════════════════════════════════════════
@@ -1265,18 +1265,17 @@ Responda de forma direta, motivadora e prática. Máximo de 3-4 parágrafos. Use
 Quando mencionar números de peso, use o contexto real do usuário. Fale em português brasileiro.`;
 
     const messages = CHAT_HISTORY.slice(-10); // últimas 10 mensagens para contexto
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch(`${SERVER_URL}/api/ai`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
         system: sys,
-        messages
+        messages,
+        max_tokens: 1000
       })
     });
     const data = await resp.json();
-    const reply = data.content?.[0]?.text || 'Desculpe, não consegui responder agora.';
+    const reply = data.text || 'Desculpe, não consegui responder agora.';
     CHAT_HISTORY.push({ role: 'assistant', content: reply });
     removeTyping(typingId);
     appendChatMsg('ai', reply);
