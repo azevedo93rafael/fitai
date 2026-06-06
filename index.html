@@ -517,14 +517,12 @@
       <div class="card" id="diet-meals-card">
         <div style="font-size:13px; color:var(--text2);">Gerando seu plano alimentar...</div>
       </div>
-      <!--
       <div class="section-title">Perguntar à IA</div>
       <div class="card">
         <textarea class="input-field" id="diet-question" placeholder="Ex: Posso substituir o frango por atum? Qual lanche pré-treino é melhor?" style="margin-bottom:10px;"></textarea>
         <button class="btn btn-primary btn-sm" onclick="askDietQuestion()">Perguntar →</button>
         <div id="diet-answer" style="margin-top:12px; font-size:13px; line-height:1.6; color:var(--text2); display:none;"></div>
       </div>
-      -->
     </div>
   </div>
 
@@ -605,7 +603,6 @@
   <!-- ══════════════════════════════════════ -->
   <!-- CHAT                                   -->
   <!-- ══════════════════════════════════════ -->
-  <!--
   <div id="screen-chat" class="screen" style="padding-bottom:0;">
     <div class="header" style="padding-bottom:12px;">
       <div class="header-top">
@@ -639,7 +636,6 @@
       <button class="chat-send" onclick="sendChat()">➤</button>
     </div>
   </div>
-  -->
 
   <!-- ══════════════════════════════════════ -->
   <!-- CARGAS                                 -->
@@ -686,7 +682,7 @@
     </div>
     <div class="scroll-area">
 
-      <!--
+      <!-- RELATÓRIO SEMANAL -->
       <div class="section-title" style="margin-top:0;">Relatório semanal com IA</div>
       <div class="card" id="report-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
@@ -714,7 +710,6 @@
           Clique em "Gerar análise" para receber um relatório completo da semana com feedback personalizado da IA.
         </div>
       </div>
-      -->
 
       <!-- STREAK -->
       <div class="section-title">Sequência de treinos 🔥</div>
@@ -764,7 +759,7 @@
             <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">🌅</span> <div><div style="font-weight:500;">Lembrete matinal</div><div style="font-size:11px; color:var(--text3);">Treino do dia ao acordar</div></div></div>
             <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">✅</span> <div><div style="font-weight:500;">Check-in via WhatsApp</div><div style="font-size:11px; color:var(--text3);">Responda "sim" ou "não" para registrar</div></div></div>
             <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">⚖️</span> <div><div style="font-weight:500;">Lembrete de peso semanal</div><div style="font-size:11px; color:var(--text3);">Todo domingo de manhã</div></div></div>
-            <!-- <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">📊</span> <div><div style="font-weight:500;">Relatório semanal</div><div style="font-size:11px; color:var(--text3);">Resumo e motivação toda segunda</div></div></div> -->
+            <div style="display:flex; align-items:center; gap:10px; font-size:13px;"><span style="font-size:16px;">📊</span> <div><div style="font-weight:500;">Relatório semanal</div><div style="font-size:11px; color:var(--text3);">Resumo e motivação toda segunda</div></div></div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
             <button class="btn btn-outline btn-sm" onclick="testWAMessage()">📨 Testar mensagem</button>
@@ -798,12 +793,10 @@
       <span class="nav-icon">🏋️</span>
       <span class="nav-label">Treinos</span>
     </button>
-    <!--
     <button class="nav-btn" id="nav-chat" onclick="showScreen('chat')">
       <span class="nav-icon">🤖</span>
       <span class="nav-label">FitAI</span>
     </button>
-    -->
     <button class="nav-btn" id="nav-cargas" onclick="showScreen('cargas')">
       <span class="nav-icon">📋</span>
       <span class="nav-label">Cargas</span>
@@ -982,8 +975,45 @@ async function callClaude(systemPrompt, userMessage) {
 // ═══════════════════════════════════════════
 // GENERATE WORKOUT
 // ═══════════════════════════════════════════
-function generateWorkout(profile) {
-  return generateFallbackWorkout(profile);
+async function generateWorkout(profile) {
+  const tmb = calcTMB(profile.peso, profile.altura, profile.nascimento);
+  const tdee = calcTDEE(tmb);
+  const deficit = Math.round(tdee - 400);
+  const sys = `Você é um personal trainer expert. Responda APENAS em JSON válido, sem texto extra, sem markdown.`;
+  const msg = `Crie um programa de treino completo para este atleta:
+- Peso: ${profile.peso}kg | Altura: ${profile.altura}cm | Idade: ${calcAge(profile.nascimento)} anos
+- Objetivo: perda de peso + hipertrofia e definição
+- Foco muscular: ${profile.foco.join(', ')}
+- Divisão: ${profile.divisao} — 5 dias/semana (Seg a Sex)
+- Nível: ${profile.nivel}
+- Tempo disponível: 60 min/treino
+
+Retorne JSON com esta estrutura exata:
+{
+  "program_name": "nome do programa",
+  "objective": "descrição curta do objetivo",
+  "days": [
+    {
+      "day": "Segunda",
+      "label": "Peito + Tríceps",
+      "type": "treino",
+      "exercises": [
+        { "name": "nome do exercício", "sets": 4, "reps": "8-10", "rest": "60s", "tip": "dica técnica curta" }
+      ]
+    },
+    { "day": "Sábado", "label": "Descanso", "type": "rest" },
+    { "day": "Domingo", "label": "Descanso", "type": "rest" }
+  ]
+}
+Inclua todos os 7 dias. Dias de treino: Seg a Sex. Sáb e Dom: descanso. Inclua cardio HIIT em 1 dia como finalizador.`;
+
+  const raw = await callClaude(sys, msg);
+  try {
+    const clean = raw.replace(/```json|```/g,'').trim();
+    return JSON.parse(clean);
+  } catch(e) {
+    return generateFallbackWorkout(profile);
+  }
 }
 
 function generateFallbackWorkout(profile) {
@@ -1200,9 +1230,15 @@ async function startApp() {
     return;
   }
 
-  STATE.workoutPlan = generateWorkout(p);
+  showLoading('Gerando seu programa de treinos...');
+  try {
+    STATE.workoutPlan = await generateWorkout(p);
+  } catch(e) {
+    STATE.workoutPlan = generateFallbackWorkout(p);
+  }
   STATE.dietPlan = generateDiet(p);
   saveState();
+  hideLoading();
   document.getElementById('main-navbar').style.display = 'flex';
   showScreen('home');
 }
@@ -1928,10 +1964,10 @@ function checkInWorkout(done) {
   showToast(msg);
 }
 
-function regenerateWorkout() {
-  STATE.workoutPlan = generateWorkout(STATE.profile);
-  saveState();
-  renderTreinos();
+async function regenerateWorkout() {
+  showLoading('Regenerando programa de treinos...');
+  try { STATE.workoutPlan = await generateWorkout(STATE.profile); } catch(e) { STATE.workoutPlan = generateFallbackWorkout(STATE.profile); }
+  saveState(); hideLoading(); renderTreinos();
 }
 
 // ═══════════════════════════════════════════
