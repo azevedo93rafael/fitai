@@ -42,12 +42,13 @@
     font-family: var(--font-body);
     max-width: 430px;
     margin: 0 auto;
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
     position: relative;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 
-  #app { display: flex; flex-direction: column; min-height: 100vh; }
+  #app { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
   /* ── SCREENS ── */
   .screen { display: none; flex-direction: column; flex: 1; padding-bottom: calc(72px + var(--safe-bottom)); animation: fadeUp 0.3s ease; }
@@ -205,7 +206,7 @@
   .day-pill.rest { border-style: dashed; }
 
   /* ── ONBOARDING ── */
-  #screen-onboarding { padding-bottom: 20px; }
+  #screen-onboarding { padding-bottom: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .onboard-hero { padding: 60px 24px 32px; }
   .onboard-logo { font-family: var(--font-display); font-size: 32px; font-weight: 800; color: var(--accent); margin-bottom: 8px; letter-spacing: -0.02em; }
   .onboard-tagline { font-size: 15px; color: var(--text2); line-height: 1.5; }
@@ -602,7 +603,7 @@
   <!-- ══════════════════════════════════════ -->
   <!-- CHAT                                   -->
   <!-- ══════════════════════════════════════ -->
-  <div id="screen-chat" class="screen" style="padding-bottom:0;">
+  <div id="screen-chat" class="screen">
     <div class="header" style="padding-bottom:12px;">
       <div class="header-top">
         <div>
