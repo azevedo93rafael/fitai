@@ -522,12 +522,6 @@
       <div class="card" id="diet-meals-card">
         <div style="font-size:13px; color:var(--text2);">Gerando seu plano alimentar...</div>
       </div>
-      <div class="section-title">Perguntar à IA</div>
-      <div class="card">
-        <textarea class="input-field" id="diet-question" placeholder="Ex: Posso substituir o frango por atum? Qual lanche pré-treino é melhor?" style="margin-bottom:10px;"></textarea>
-        <button class="btn btn-primary btn-sm" onclick="askDietQuestion()">Perguntar →</button>
-        <div id="diet-answer" style="margin-top:12px; font-size:13px; line-height:1.6; color:var(--text2); display:none;"></div>
-      </div>
     </div>
   </div>
 
@@ -831,15 +825,7 @@ const STATE = {
     foco: ['bíceps','tríceps','peito','costas'],
   },
   weightLog: [
-    { date: '2025-03-01', kg: 118 },
-    { date: '2025-03-08', kg: 117.2 },
-    { date: '2025-03-15', kg: 116.5 },
-    { date: '2025-03-22', kg: 115.8 },
-    { date: '2025-04-01', kg: 115.2 },
-    { date: '2025-04-08', kg: 114.6 },
-    { date: '2025-04-15', kg: 114.0 },
-    { date: '2025-04-22', kg: 113.4 },
-    { date: '2025-05-01', kg: 113 },
+    { date: '2026-06-06', kg: 113 }
   ],
   workoutPlan: null,
   dietPlan: null,
@@ -860,7 +846,16 @@ function saveState() {
 function loadState() {
   try {
     const s = localStorage.getItem('fitai_state');
-    if (s) { const parsed = JSON.parse(s); Object.assign(STATE, parsed); }
+    if (s) {
+      const parsed = JSON.parse(s);
+      // Se contiver dados de peso antigos (2025), limpa o localStorage para zerar
+      if (parsed.weightLog && parsed.weightLog.some(l => l.date.startsWith('2025'))) {
+        console.log('Dados antigos detectados no localStorage. Resetando...');
+        localStorage.removeItem('fitai_state');
+        return;
+      }
+      Object.assign(STATE, parsed);
+    }
   } catch(e) {}
 }
 
@@ -1358,9 +1353,11 @@ Perfil atual e dieta: ${JSON.stringify(ctx)}
 Responda de forma direta, motivadora e prática. Máximo de 3-4 parágrafos. Use emojis com moderação. 
 Quando mencionar números de peso, use o contexto real do usuário. Fale em português brasileiro.
 
-AUTONOMIA DE AJUSTAR A DIETA:
-Se o usuário pedir para fazer alguma alteração, correção ou ajuste no plano de dieta atual (como substituir alimentos, alterar quantidades, mudar horários, etc.), você tem total autonomia para atualizar o plano de dieta.
-Para fazer a alteração, você deve incluir no FINAL da sua resposta uma tag especial contendo o JSON completo da dieta atualizada de forma estruturada:
+REGRAS DE AJUSTE DE DIETA (CONSENTIMENTO OBRIGATÓRIO):
+Toda e qualquer alteração no plano de dieta atual deve ser explicitamente consentida e autorizada pelo usuário no chat antes de ser aplicada no aplicativo.
+1. Se o usuário propor uma alteração na dieta (ex: "quero trocar o frango por carne no almoço"), você deve propor a alteração no texto da sua resposta, explicar o ajuste e perguntar se ele aprova e quer que você atualize isso no aplicativo. Nesta fase, NÃO gere a tag <update_diet> ainda.
+2. A tag <update_diet> contendo o JSON atualizado só pode ser gerada após o usuário confirmar explicitamente que autoriza a atualização (ex: respondendo "sim", "aprovo", "pode atualizar", "sim, atualize a dieta").
+3. Quando o usuário der essa autorização explícita, você deve incluir no FINAL da sua resposta a tag contendo o JSON completo da dieta atualizada de forma estruturada:
 <update_diet>
 {
   "kcal": 1800,
@@ -1380,7 +1377,7 @@ Para fazer a alteração, você deve incluir no FINAL da sua resposta uma tag es
         "100g de banana"
       ]
     },
-    ... (todas as 4 refeições exatamente no mesmo formato, mas com as alterações que o usuário pediu)
+    ... (todas as 4 refeições exatamente no mesmo formato, mas com as alterações aprovadas pelo usuário)
   ],
   "tips": [
     "Dica útil baseada no ajuste feito..."
@@ -1388,7 +1385,7 @@ Para fazer a alteração, você deve incluir no FINAL da sua resposta uma tag es
 }
 </update_diet>
 
-Certifique-se de que o JSON esteja no formato correto e represente a dieta completa atualizada. Explique na resposta de texto o que mudou e por quê.`;
+Certifique-se de que o JSON esteja no formato correto e represente a dieta completa atualizada.`;
 
     // Filtra o histórico para enviar ao OpenRouter apenas as últimas 10 mensagens
     const messages = STATE.chatHistory.slice(-10).map(msg => {
@@ -2124,21 +2121,7 @@ function regenerateDiet() {
   renderDieta();
 }
 
-async function askDietQuestion() {
-  const q = document.getElementById('diet-question').value.trim();
-  if (!q) return;
-  const answerEl = document.getElementById('diet-answer');
-  answerEl.style.display = 'block';
-  answerEl.innerHTML = '<div style="color:var(--accent);">FitAI está pensando...</div>';
-  try {
-    const context = JSON.stringify({ profile: STATE.profile, diet: STATE.dietPlan });
-    const sys = `Você é um nutricionista expert. Responda de forma direta e prática em no máximo 3 parágrafos. Contexto do usuário: ${context}`;
-    const resp = await callClaude(sys, q);
-    answerEl.innerHTML = `<div style="color:var(--text); line-height:1.6;">${resp.replace(/\n/g,'<br>')}</div>`;
-  } catch(e) {
-    answerEl.innerHTML = '<div style="color:var(--red);">Erro ao conectar. Verifique sua conexão.</div>';
-  }
-}
+
 
 // ═══════════════════════════════════════════
 // PROGRESSO
